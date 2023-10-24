@@ -1,2 +1,1 @@
-pub mod graph;
-pub mod segment;
+pub mod components;
