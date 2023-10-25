@@ -19,4 +19,8 @@ impl Graph {
             segments: segments.unwrap_or(Vec::new()),
         };
     }
+
+    pub fn add_point(&mut self, entity: Entity) {
+        self.points.push(entity);
+    }
 }

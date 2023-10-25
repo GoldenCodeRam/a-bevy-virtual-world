@@ -1,8 +1,15 @@
 #![allow(clippy::type_complexity)]
 
 use bevy::prelude::*;
+use rand::Rng;
 
-use crate::{components::components::{Graph, Point, Segment}, events::events::ButtonClickEvent};
+use crate::{
+    components::{
+        components::{Graph, Point, Segment},
+        markers::AddRandomPointButton,
+    },
+    events::events::ButtonClickEvent,
+};
 
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
@@ -24,20 +31,22 @@ pub fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
         })
         .with_children(|parent| {
             parent
-                .spawn(ButtonBundle {
-                    style: Style {
-                        width: Val::Px(150.0),
-                        height: Val::Px(65.0),
-                        border: UiRect::all(Val::Px(5.0)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            width: Val::Px(150.0),
+                            height: Val::Px(65.0),
+                            border: UiRect::all(Val::Px(5.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        border_color: BorderColor(Color::BLACK),
+                        background_color: NORMAL_BUTTON.into(),
                         ..default()
                     },
-
-                    border_color: BorderColor(Color::BLACK),
-                    background_color: NORMAL_BUTTON.into(),
-                    ..default()
-                })
+                    AddRandomPointButton,
+                ))
                 .with_children(|parent| {
                     parent.spawn(TextBundle::from_section(
                         "Button",
@@ -50,7 +59,7 @@ pub fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 });
         });
 
-    let p1 = commands.spawn(Point(Vec2 { x: 200.0, y: 200.0 })).id();
+    let p1 = commands.spawn(Point(Vec2 { x: 1.0, y: 1.0 })).id();
     let p2 = commands.spawn(Point(Vec2 { x: 300.0, y: 200.0 })).id();
     let p3 = commands.spawn(Point(Vec2 { x: 400.0, y: 100.0 })).id();
     let p4 = commands.spawn(Point(Vec2 { x: 100.0, y: 300.0 })).id();
@@ -77,8 +86,10 @@ pub fn update(
         }
 
         gizmos.line_2d(p1.unwrap().1 .0, p2.unwrap().1 .0, Color::BLACK);
-        p1.unwrap().1.draw(&mut gizmos);
-        p2.unwrap().1.draw(&mut gizmos);
+    }
+
+    for point in point_query.iter() {
+        point.1.draw(&mut gizmos);
     }
 }
 
@@ -90,7 +101,11 @@ pub fn button_system(
             &mut BorderColor,
             &Children,
         ),
-        (Changed<Interaction>, With<Button>),
+        (
+            Changed<Interaction>,
+            With<Button>,
+            With<AddRandomPointButton>,
+        ),
     >,
     mut text_query: Query<&mut Text>,
     mut event_button_click: EventWriter<ButtonClickEvent>,
@@ -102,7 +117,7 @@ pub fn button_system(
                 text.sections[0].value = "Press".to_string();
                 *color = PRESSED_BUTTON.into();
                 border_color.0 = Color::WHITE;
-                event_button_click.send(ButtonClickEvent{})
+                event_button_click.send(ButtonClickEvent {})
             }
             Interaction::Hovered => {
                 text.sections[0].value = "Hover".to_string();
@@ -118,10 +133,41 @@ pub fn button_system(
     }
 }
 
-pub fn debug_button_click(mut event: EventReader<ButtonClickEvent>) {
-    for ev in event.iter() {
-        eprintln!("event: {:?}", ev);
+pub fn debug_button_click(
+    mut event: EventReader<ButtonClickEvent>,
+    mut commands: Commands,
+    mut graph_query: Query<&mut Graph>,
+    window_query: Query<&Window>,
+    camera_query: Query<&Transform, With<Camera2d>>
+) {
+    for _ev in event.iter() {
+        let mut rng = rand::thread_rng();
+        let window = window_query.single();
+
+        let point = Point(window_to_world(
+            Vec2::new(
+                rng.gen::<f32>() * window.width(),
+                rng.gen::<f32>() * window.height(),
+            ),
+            &window,
+            &camera_query.single()
+        ));
+
+        graph_query
+            .single_mut()
+            .add_point(commands.spawn(point).id());
     }
+}
+
+fn window_to_world(position: Vec2, window: &Window, camera: &Transform) -> Vec2 {
+    let norm = Vec3::new(
+        position.x - window.width() / 2.0,
+        position.y - window.height() / 2.0,
+        0.0,
+    );
+
+    let camera_transform = *camera * norm;
+    return Vec2::new(camera_transform.x, camera_transform.y);
 }
 
 trait DrawGizmos {
