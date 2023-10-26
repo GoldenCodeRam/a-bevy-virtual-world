@@ -1,7 +1,13 @@
-use bevy::prelude::{Component, Vec2, Entity};
+use bevy::prelude::{Component, Entity, Vec2};
 
 #[derive(Component)]
 pub struct Point(pub Vec2);
+
+impl PartialEq for Point {
+    fn eq(&self, other: &Self) -> bool {
+        return self.0 == other.0;
+    }
+}
 
 #[derive(Component)]
 pub struct Segment(pub Entity, pub Entity);
@@ -20,7 +26,7 @@ impl Graph {
         };
     }
 
-    pub fn add_point(&mut self, entity: Entity) {
+    pub fn add_point_entity(&mut self, entity: Entity) {
         self.points.push(entity);
     }
 }

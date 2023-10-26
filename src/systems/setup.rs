@@ -137,6 +137,7 @@ pub fn debug_button_click(
     mut event: EventReader<ButtonClickEvent>,
     mut commands: Commands,
     mut graph_query: Query<&mut Graph>,
+    point_query: Query<&Point>,
     window_query: Query<&Window>,
     camera_query: Query<&Transform, With<Camera2d>>
 ) {
@@ -144,7 +145,7 @@ pub fn debug_button_click(
         let mut rng = rand::thread_rng();
         let window = window_query.single();
 
-        let point = Point(window_to_world(
+        let new_point = Point(window_to_world(
             Vec2::new(
                 rng.gen::<f32>() * window.width(),
                 rng.gen::<f32>() * window.height(),
@@ -153,9 +154,11 @@ pub fn debug_button_click(
             &camera_query.single()
         ));
 
-        graph_query
-            .single_mut()
-            .add_point(commands.spawn(point).id());
+        if point_query.iter().find(|p| **p == new_point).is_none() {
+            graph_query
+                .single_mut()
+                .add_point_entity(commands.spawn(new_point).id());
+        }
     }
 }
 
