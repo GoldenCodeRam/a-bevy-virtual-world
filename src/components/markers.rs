@@ -1,4 +1,7 @@
 use bevy::prelude::Component;
 
 #[derive(Component)]
-pub struct AddRandomPointButton;
+pub enum ButtonType {
+    AddRandomPoint,
+    AddRandomSegment,
+}
