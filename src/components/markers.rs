@@ -5,4 +5,6 @@ pub enum ButtonType {
     AddRandomPoint,
     AddRandomSegment,
     RemoveRandomSegment,
+    RemoveRandomPoint,
+    RemoveAll,
 }

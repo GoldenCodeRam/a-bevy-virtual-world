@@ -19,7 +19,7 @@ impl PartialEq for Segment {
 }
 
 impl Segment {
-    fn includes_point(&self, point: &Entity) -> bool {
+    pub fn includes_point(&self, point: &Entity) -> bool {
         return &self.0 == point || &self.1 == point;
     }
 }
@@ -44,6 +44,11 @@ impl Graph {
 
     pub fn add_segment_entity(&mut self, entity: Entity) {
         self.segments.push(entity);
+    }
+
+    pub fn remove_point_entity(&mut self, entity: Entity) {
+        let index = self.points.iter().position(|e| *e == entity).unwrap();
+        self.points.remove(index);
     }
 
     pub fn remove_segment_entity(&mut self, entity: Entity) {

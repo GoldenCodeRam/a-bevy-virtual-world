@@ -8,7 +8,10 @@ use crate::{
         components::{Graph, Point, Segment},
         markers::ButtonType,
     },
-    events::events::{ButtonClickEvent, CreateRandomSegmentEvent, RemoveRandomSegmentEvent},
+    events::events::{
+        ButtonClickEvent, CreateRandomSegmentEvent, RemoveRandomPointEvent,
+        RemoveRandomSegmentEvent, RemoveAllEvent,
+    },
 };
 
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
@@ -125,11 +128,65 @@ pub fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         background_color: NORMAL_BUTTON.into(),
                         ..default()
                     },
+                    ButtonType::RemoveAll,
+                ))
+                .with_children(|parent| {
+                    parent.spawn(TextBundle::from_section(
+                        "Remove All",
+                        TextStyle {
+                            font: (asset_server.load("fonts/FiraSans-Bold.ttf")),
+                            font_size: 40.0,
+                            color: Color::rgb(0.9, 0.9, 0.9),
+                        },
+                    ));
+                });
+            parent
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            width: Val::Px(150.0),
+                            height: Val::Px(65.0),
+                            border: UiRect::all(Val::Px(5.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        border_color: BorderColor(Color::BLACK),
+                        background_color: NORMAL_BUTTON.into(),
+                        ..default()
+                    },
                     ButtonType::RemoveRandomSegment,
                 ))
                 .with_children(|parent| {
                     parent.spawn(TextBundle::from_section(
                         "RR Segment",
+                        TextStyle {
+                            font: (asset_server.load("fonts/FiraSans-Bold.ttf")),
+                            font_size: 40.0,
+                            color: Color::rgb(0.9, 0.9, 0.9),
+                        },
+                    ));
+                });
+            parent
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            width: Val::Px(150.0),
+                            height: Val::Px(65.0),
+                            border: UiRect::all(Val::Px(5.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        border_color: BorderColor(Color::BLACK),
+                        background_color: NORMAL_BUTTON.into(),
+                        ..default()
+                    },
+                    ButtonType::RemoveRandomPoint,
+                ))
+                .with_children(|parent| {
+                    parent.spawn(TextBundle::from_section(
+                        "RR Point",
                         TextStyle {
                             font: (asset_server.load("fonts/FiraSans-Bold.ttf")),
                             font_size: 40.0,
@@ -188,6 +245,8 @@ pub fn button_system(
     mut event_button_click: EventWriter<ButtonClickEvent>,
     mut add_random_segment_event: EventWriter<CreateRandomSegmentEvent>,
     mut remove_random_segment_event: EventWriter<RemoveRandomSegmentEvent>,
+    mut remove_random_point_event: EventWriter<RemoveRandomPointEvent>,
+    mut remove_all_event: EventWriter<RemoveAllEvent>,
 ) {
     for (interaction, mut color, mut border_color, children, button_type) in &mut interaction_query
     {
@@ -213,6 +272,18 @@ pub fn button_system(
                     }
                 }
             }
+            ButtonType::RemoveAll => match *interaction {
+                Interaction::Pressed => {
+                    remove_all_event.send(RemoveAllEvent {});
+                }
+                _ => (),
+            },
+            ButtonType::RemoveRandomPoint => match *interaction {
+                Interaction::Pressed => {
+                    remove_random_point_event.send(RemoveRandomPointEvent {});
+                }
+                _ => (),
+            },
             ButtonType::RemoveRandomSegment => match *interaction {
                 Interaction::Pressed => {
                     remove_random_segment_event.send(RemoveRandomSegmentEvent {});
@@ -288,6 +359,40 @@ pub fn create_random_segment(
     }
 }
 
+pub fn remove_random_point(
+    mut event: EventReader<RemoveRandomPointEvent>,
+    mut commands: Commands,
+    mut graph_query: Query<&mut Graph>,
+    point_query: Query<Entity, With<Point>>,
+    segment_query: Query<(Entity, &Segment)>,
+) {
+    for _ev in event.iter() {
+        let mut rng = rand::thread_rng();
+        let point_entity = point_query.iter().choose(&mut rng);
+
+        match point_entity {
+            Some(p) => {
+                let mut graph = graph_query.single_mut();
+                // Remove segments associated with that point.
+                segment_query
+                    .iter()
+                    .filter(|s| s.1.includes_point(&p))
+                    .for_each(|s| {
+                        graph.remove_segment_entity(s.0);
+                        commands.entity(s.0).despawn();
+                    });
+                // Remove point.
+                graph.remove_point_entity(p);
+                commands.entity(p).despawn();
+
+                eprintln!("segments: {:?}", graph.segments.len());
+                eprintln!("points: {:?}", graph.points.len());
+            }
+            None => (),
+        }
+    }
+}
+
 pub fn remove_random_segment(
     mut event: EventReader<RemoveRandomSegmentEvent>,
     mut commands: Commands,
@@ -300,13 +405,32 @@ pub fn remove_random_segment(
 
         match segment_entity {
             Some(s) => {
-                graph_query
-                    .single_mut()
-                    .remove_segment_entity(s);
+                graph_query.single_mut().remove_segment_entity(s);
                 commands.entity(s).despawn();
             }
             None => (),
         }
+        eprintln!("segments: {:?}", graph_query.single_mut().segments.len());
+    }
+}
+
+pub fn remove_all(
+    mut event: EventReader<RemoveAllEvent>,
+    mut commands: Commands,
+    mut graph_query: Query<&mut Graph>,
+    point_query: Query<Entity, With<Point>>,
+    segment_query: Query<Entity, With<Segment>>,
+) {
+    for _ev in event.iter() {
+        let mut graph = graph_query.single_mut();
+        point_query.for_each(|p| {
+            graph.remove_point_entity(p);
+            commands.entity(p).despawn();
+        });
+        segment_query.for_each(|s| {
+            graph.remove_segment_entity(s);
+            commands.entity(s).despawn();
+        });
     }
 }
 

@@ -9,3 +9,10 @@ pub struct CreateRandomSegmentEvent;
 
 #[derive(Event)]
 pub struct RemoveRandomSegmentEvent;
+
+#[derive(Event)]
+pub struct RemoveRandomPointEvent;
+
+#[derive(Event)]
+pub struct RemoveAllEvent;
+
