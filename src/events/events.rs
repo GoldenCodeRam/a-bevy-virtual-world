@@ -6,3 +6,6 @@ pub struct ButtonClickEvent;
 
 #[derive(Event)]
 pub struct CreateRandomSegmentEvent;
+
+#[derive(Event)]
+pub struct RemoveRandomSegmentEvent;

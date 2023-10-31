@@ -4,4 +4,5 @@ use bevy::prelude::Component;
 pub enum ButtonType {
     AddRandomPoint,
     AddRandomSegment,
+    RemoveRandomSegment,
 }

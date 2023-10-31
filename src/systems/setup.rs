@@ -8,7 +8,7 @@ use crate::{
         components::{Graph, Point, Segment},
         markers::ButtonType,
     },
-    events::events::{ButtonClickEvent, CreateRandomSegmentEvent},
+    events::events::{ButtonClickEvent, CreateRandomSegmentEvent, RemoveRandomSegmentEvent},
 };
 
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
@@ -21,7 +21,7 @@ pub fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
         .spawn(NodeBundle {
             style: Style {
-                width: Val::Percent(50.0),
+                width: Val::Percent(33.333),
                 height: Val::Percent(100.0),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
@@ -61,7 +61,7 @@ pub fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
         .spawn(NodeBundle {
             style: Style {
-                width: Val::Percent(50.0),
+                width: Val::Percent(33.333),
                 height: Val::Percent(100.0),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
@@ -90,6 +90,46 @@ pub fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 .with_children(|parent| {
                     parent.spawn(TextBundle::from_section(
                         "Segment",
+                        TextStyle {
+                            font: (asset_server.load("fonts/FiraSans-Bold.ttf")),
+                            font_size: 40.0,
+                            color: Color::rgb(0.9, 0.9, 0.9),
+                        },
+                    ));
+                });
+        });
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                width: Val::Percent(33.333),
+                height: Val::Percent(100.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            ..default()
+        })
+        .with_children(|parent| {
+            parent
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            width: Val::Px(150.0),
+                            height: Val::Px(65.0),
+                            border: UiRect::all(Val::Px(5.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        border_color: BorderColor(Color::BLACK),
+                        background_color: NORMAL_BUTTON.into(),
+                        ..default()
+                    },
+                    ButtonType::RemoveRandomSegment,
+                ))
+                .with_children(|parent| {
+                    parent.spawn(TextBundle::from_section(
+                        "RR Segment",
                         TextStyle {
                             font: (asset_server.load("fonts/FiraSans-Bold.ttf")),
                             font_size: 40.0,
@@ -147,6 +187,7 @@ pub fn button_system(
     mut text_query: Query<&mut Text>,
     mut event_button_click: EventWriter<ButtonClickEvent>,
     mut add_random_segment_event: EventWriter<CreateRandomSegmentEvent>,
+    mut remove_random_segment_event: EventWriter<RemoveRandomSegmentEvent>,
 ) {
     for (interaction, mut color, mut border_color, children, button_type) in &mut interaction_query
     {
@@ -172,6 +213,14 @@ pub fn button_system(
                     }
                 }
             }
+            ButtonType::RemoveRandomSegment => match *interaction {
+                Interaction::Pressed => {
+                    remove_random_segment_event.send(RemoveRandomSegmentEvent {});
+                }
+                // This is not correct! But for the moment we'll leave it like
+                // that
+                _ => (),
+            },
             ButtonType::AddRandomSegment => match *interaction {
                 Interaction::Pressed => {
                     add_random_segment_event.send(CreateRandomSegmentEvent {});
@@ -235,6 +284,28 @@ pub fn create_random_segment(
             graph_query
                 .single_mut()
                 .add_segment_entity(commands.spawn(new_segment).id());
+        }
+    }
+}
+
+pub fn remove_random_segment(
+    mut event: EventReader<RemoveRandomSegmentEvent>,
+    mut commands: Commands,
+    mut graph_query: Query<&mut Graph>,
+    segment_query: Query<Entity, With<Segment>>,
+) {
+    for _ev in event.iter() {
+        let mut rng = rand::thread_rng();
+        let segment_entity = segment_query.iter().choose(&mut rng);
+
+        match segment_entity {
+            Some(s) => {
+                graph_query
+                    .single_mut()
+                    .remove_segment_entity(s);
+                commands.entity(s).despawn();
+            }
+            None => (),
         }
     }
 }
